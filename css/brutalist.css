@@ -199,3 +199,13 @@ button:hover {
     color: #fff;
 }
 
+#timer-val {
+    font-family: 'Courier New', Courier, monospace;
+    color: #0df205;
+    text-shadow: 0 0 10px #0df205;
+}
+
+.denied {
+    color: #ff0000;
+    text-transform: uppercase;
+}

@@ -1,5 +1,6 @@
 /**
  * P4SSW0RD: SYSTEM BREACH ENGINE v1.0.42
+ * Includes Daily Lockout, Countdown Timer, and Audit Logic
  */
 
 // --- 1. GAME STATE ---
@@ -16,14 +17,24 @@ let isGameOver = false;
 let guessHistory = [];
 let permanentMask = Array(target.length).fill('_'); 
 
-// --- 2. INITIALIZATION ---
+// --- 2. INITIALIZATION & DAILY LOCK ---
 const bootPhrases = [
     "INITIALIZING KERNEL...", "MOUNTING VIRTUAL DRIVES...", "ESTABLISHING CONNECTION...",
     "SPOOFING IP MAC...", "REROUTING PROXIES...", "BYPASSING FIREWALL...",
     "INJECTING PAYLOAD...", "FETCHING HASH...", "TARGET ACQUIRED.", "BOOT COMPLETE."
 ];
 
-window.onload = () => { runBootSequence(); };
+window.onload = () => {
+    // Check if user already finished today's breach
+    const lastWin = localStorage.getItem('last_breach_date');
+    const todayStr = new Date().toDateString();
+
+    if (lastWin === todayStr) {
+        showCountdown(); 
+    } else {
+        runBootSequence();
+    }
+};
 
 function runBootSequence() {
     const loadingScreen = document.getElementById('loading-screen');
@@ -51,6 +62,7 @@ function runBootSequence() {
 // --- 3. UI CONTROLS ---
 function openHelp() { document.getElementById('help-modal').style.display = 'flex'; }
 function closeHelp() { document.getElementById('help-modal').style.display = 'none'; inputField.focus(); }
+
 function appendToLog(text, className) {
     const div = document.createElement('div');
     div.className = className;
@@ -58,6 +70,7 @@ function appendToLog(text, className) {
     terminalLog.appendChild(div);
     terminalLog.scrollTop = terminalLog.scrollHeight;
 }
+
 function triggerGlitch() {
     const container = document.querySelector('.terminal-container');
     container.classList.add('glitch');
@@ -77,6 +90,7 @@ function processGuess(guess) {
     guessHistory.push(guess);
     attemptDisplay.innerText = attempts;
 
+    // Record correct positions into the permanent mask
     for (let i = 0; i < target.length; i++) {
         if (guess[i] === target[i]) { permanentMask[i] = target[i]; }
     }
@@ -144,15 +158,20 @@ function revealActualCharacter() {
     }
 }
 
-// --- 5. END GAME ---
+// --- 5. END GAME & TIMER ---
 function winGame() {
     isGameOver = true;
     inputField.disabled = true;
     permanentMask = target.split('');
     updateEncryptionHeader();
+    
+    // Save victory to prevent re-play today
+    localStorage.setItem('last_breach_date', new Date().toDateString());
+
     appendToLog(`************************************`, 'system-msg');
     appendToLog(`ACCESS GRANTED. SYSTEM BREACHED.`, 'leak');
     appendToLog(`FINAL SCORE: ${score}`, 'system-msg');
+    
     const report = generateShareText();
     document.getElementById('share-report').innerText = report;
     setTimeout(() => { document.getElementById('results-modal').style.display = 'flex'; }, 1000);
@@ -162,11 +181,38 @@ function generateShareText() {
     const today = new Date();
     const dateStr = `${today.getFullYear()}.${today.getMonth()+1}.${today.getDate()}`;
     let report = `P4SSW0RD BREACH: ${dateStr}\nSCORE: ${score}\nATTEMPTS: ${attempts}\n\n`;
-    guessHistory.forEach((g, i) => {
+    guessHistory.forEach((g) => {
         report += `[ ${g.split('').map(() => "█").join("")} ] DENIED\n`;
     });
     report += `\n[ ${target} ] ACCESS_GRANTED`;
     return report;
+}
+
+function showCountdown() {
+    document.getElementById('results-modal').style.display = 'none';
+    document.getElementById('loading-screen').style.display = 'none';
+    document.getElementById('countdown-screen').style.display = 'flex';
+    updateTimer(); 
+    setInterval(updateTimer, 1000);
+}
+
+function updateTimer() {
+    const now = new Date();
+    const tomorrow = new Date();
+    tomorrow.setHours(24, 0, 0, 0);
+
+    const diff = tomorrow - now;
+    if (diff <= 0) { location.reload(); return; }
+
+    const hours = Math.floor(diff / (1000 * 60 * 60));
+    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+    const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+
+    const h = hours.toString().padStart(2, '0');
+    const m = minutes.toString().padStart(2, '0');
+    const s = seconds.toString().padStart(2, '0');
+
+    document.getElementById('timer-val').innerText = `${h}:${m}:${s}`;
 }
 
 function copyToClipboard() {
